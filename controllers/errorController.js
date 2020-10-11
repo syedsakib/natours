@@ -78,9 +78,22 @@ const errorContoller = (err, req, res, next) => {
     error = new AppError(message, 400);
   }
 
+  //JWT Invalid Token error
+  if (err.name === 'JsonWebTokenError') {
+    const message = `Invalid token. Please log in again..`;
+    error = new AppError(message, 401);
+  }
+
+  // Token Expired error
+  if (err.name === 'TokenExpiredError') {
+    const message = `Your token expired. Please log in again..`;
+    error = new AppError(message, 401);
+  }
+
   res.status(error.statusCode || 500).json({
     success: false,
     error: error.message || 'Server Error',
+    //error: error,
   });
 };
 
