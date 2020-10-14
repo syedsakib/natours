@@ -39,6 +39,7 @@ const tourSchema = new mongoose.Schema(
       default: 4.5,
       min: [1, 'Rating must be above 1'],
       max: [5, 'Rating must be less than 5'],
+      set: (val) => Math.round(val * 10) / 10,
     },
     ratingsQuantity: {
       type: Number,
@@ -52,7 +53,7 @@ const tourSchema = new mongoose.Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          // this only points to current doc on NEW document creation
+          // this only points to current doc on "NEW" document creation
           return val < this.price;
         },
         message: 'Discount price({VALUE}) should be bellow regular price',
@@ -81,6 +82,35 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point'],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point'],
+        },
+        coordinates: [Number],
+        address: String,
+        description: String,
+        day: Number,
+      },
+    ],
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     toJSON: {
@@ -92,25 +122,38 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+tourSchema.index({ price: -1, ratingsAverage: 1 });
+tourSchema.index({ startLocation: '2dsphere' });
+
+//
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
 });
 
+tourSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
+});
+
 //DOCUMENT MIDDLEWARE:
-//  1)
+//  1)slugify
 tourSchema.pre('save', function (next) {
   this.slug = slugify(this.name, { lower: true });
   next();
 });
 
-//  2)
-// tourSchema.post('save', function (doc, next) {
-//   console.log(doc);
-//   next();
-// });
+//  2)populate
+tourSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt',
+  });
+  next();
+});
 
 //QUERY MIDDLEWARE:
-//  1)
+//  1)secret
 tourSchema.pre(/^find/, function (next) {
   this.find({
     secretTour: { $ne: true },
@@ -120,12 +163,12 @@ tourSchema.pre(/^find/, function (next) {
 
 //AGGREGATE MIDDLEWARE:
 //  1)
-tourSchema.pre('aggregate', function (next) {
-  this.pipeline().unshift({
-    $match: { secretTour: { $ne: true } },
-  });
-  next();
-});
+// tourSchema.pre('aggregate', function (next) {
+//   this.pipeline().unshift({
+//     $match: { secretTour: { $ne: true } },
+//   });
+//   next();
+// });
 
 //
 const Tour = mongoose.model('Tour', tourSchema);
