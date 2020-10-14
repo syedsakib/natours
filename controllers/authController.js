@@ -78,7 +78,10 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
   }
+
   if (!token) {
     return next(
       new AppError('You are not logged in. Please log in to get access', 401)
@@ -116,6 +119,28 @@ exports.restrictTo = (...roles) => {
     next();
   };
 };
+
+//Only for rendered pages, no errors(check if user is logged in)
+exports.isLoggedIn = catchAsync(async (req, res, next) => {
+  if (req.cookies.jwt) {
+    //  1)Verify Token
+    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+    //  2)Check if user still exists
+    const currenthUser = await User.findById(decoded.id);
+    if (!currenthUser) {
+      return next();
+    }
+    //  3)Check if user changed password after the token was issued
+    if (currenthUser.changedPasswordAfter(decoded.iat)) {
+      return next();
+    }
+    //  4)Grant access
+    req.user = currenthUser;
+    return next();
+  }
+  next();
+});
 
 //
 exports.forgotPassword = catchAsync(async (req, res, next) => {
@@ -189,6 +214,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+//
 exports.updatePassword = catchAsync(async (req, res, next) => {
   //  1)Get user from collection
   const user = await await User.findById(req.user.id);

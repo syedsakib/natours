@@ -17,7 +17,12 @@ router.patch('/updatemypassword', authController.updatePassword);
 
 router.get('/getme', userController.getMe, userController.getUser);
 
-router.patch('/updateme', userController.updateMe);
+router.patch(
+  '/updateme',
+  userController.uploadPhoto,
+  userController.resizePhoto,
+  userController.updateMe
+);
 router.delete('/deleteme', userController.deleteMe);
 
 //Protect all routes after this middleware

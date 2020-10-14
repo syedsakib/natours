@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const globalErrorController = require('./controllers/errorController');
 
 const tourRouter = require('./routes/tourRoutes');
@@ -34,6 +35,7 @@ app.use('/api', limiter);
 
 //Body parser, reading data from body into req.body
 app.use(express.json());
+app.use(cookieParser());
 
 //Data sanitaization against NOSQL query injection
 app.use(mongoSanitize());
